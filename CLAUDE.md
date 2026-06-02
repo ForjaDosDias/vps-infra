@@ -4,16 +4,22 @@ Repositório central de configurações de infra e deploy de todos os projetos p
 
 ## Arquitetura
 
-Todos os projetos rodam em containers Docker conectados via uma rede externa compartilhada chamada `vps-proxy`. O tráfego HTTP entra pelo container `proxy` (nginx reverso) e é roteado para cada aplicação.
+Todos os projetos rodam em containers Docker. Existem duas redes externas:
+- `vps-proxy` — projetos de produção (proxy + apps)
+- `coolify` — stack de monitoring (Grafana, Loki, Promtail)
 
 ```
 Internet → proxy (nginx:80) ──► tamois:80       (tamois.com.br)
                             ──► estude-nginx:80  (forjadosdias.com.br, aprovadonaoab.com.br)
+
+Monitoring (interno):
+  promtail → loki → grafana:3001
 ```
 
-A rede Docker deve existir antes de subir qualquer serviço:
+Redes Docker devem existir antes de subir qualquer serviço:
 ```bash
 docker network create vps-proxy
+docker network create coolify
 ```
 
 ## Estrutura do Repositório
@@ -26,11 +32,15 @@ vps-infra/
 ├── tamois/             # infra do Tamois IA Jurídica (Rails)
 │   ├── docker-compose.yml
 │   └── .env.example
-└── estudeoab/          # infra do EstudeOAB (Node + React)
+├── estudeoab/          # infra do EstudeOAB (Node + React)
+│   ├── docker-compose.yml
+│   ├── nginx/nginx.conf
+│   └── .env.example
+└── monitoring/         # Grafana + Loki + Promtail
     ├── docker-compose.yml
-    ├── nginx/
-    │   └── nginx.conf
-    └── .env.example
+    ├── .env.example
+    └── config/
+        └── promtail.yml
 ```
 
 ## Como Recuperar o Ambiente
@@ -62,6 +72,14 @@ cp .env.example .env   # preencher as variáveis reais
 docker compose up -d --build
 ```
 
+### 5. Subir o Monitoring
+Os arquivos ficam em `/home/bugbrain/monitoring/` (pasta original na VPS).
+```bash
+cd /home/bugbrain/monitoring/
+cp .env.example .env   # preencher GF_ADMIN_PASSWORD e GF_ROOT_URL
+docker compose up -d
+```
+
 ## Projetos
 
 ### proxy
@@ -85,6 +103,15 @@ docker compose up -d --build
 - **Repo da app:** https://github.com/ForjaDosDias/EstudeOAB
 - **Variáveis obrigatórias:** `JWT_SECRET`, `DEEPSEEK_API_KEY`, `RESEND_API_KEY`
 - **Volume persistente:** `postgres_data`
+
+### monitoring
+- **Stack:** Grafana + Loki + Promtail
+- **Pasta na VPS:** `/home/bugbrain/monitoring/`
+- **Porta pública:** 3001 (Grafana)
+- **Rede:** `coolify` (externa)
+- **Variáveis obrigatórias:** `GF_ADMIN_PASSWORD`, `GF_ROOT_URL`
+- **Volumes persistentes:** `loki-storage`, `grafana-storage`
+- **Promtail coleta:** logs de todos os containers Docker + syslog + auth.log
 
 ## Comandos Úteis
 
