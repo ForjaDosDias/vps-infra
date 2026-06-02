@@ -51,8 +51,13 @@ docker network create vps-proxy
 ```
 
 ### 2. Subir o proxy reverso
+O docker-compose do proxy foi iniciado a partir de `/home/victor/codigo/nginx-proxy/`.
+O container monta o nginx.conf desse path — copiar o arquivo do repo antes de recarregar:
 ```bash
-cd proxy/
+cp /home/victor/Projetos/vps-infra/proxy/nginx.conf /home/victor/codigo/nginx-proxy/nginx.conf
+docker exec nginx-proxy nginx -s reload
+# ou, para recriar o container:
+cd /home/victor/codigo/nginx-proxy/
 docker compose up -d
 ```
 

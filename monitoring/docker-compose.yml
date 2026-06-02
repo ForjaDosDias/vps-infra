@@ -41,6 +41,7 @@ services:
       - grafana-storage:/var/lib/grafana
     networks:
       - coolify
+      - vps-proxy
     depends_on:
       - loki
 
@@ -50,4 +51,6 @@ volumes:
 
 networks:
   coolify:
+    external: true
+  vps-proxy:
     external: true
