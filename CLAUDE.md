@@ -11,6 +11,7 @@ Todos os projetos rodam em containers Docker. Existem duas redes externas:
 ```
 Internet → proxy (nginx:80) ──► tamois:80       (tamois.com.br)
                             ──► estude-nginx:80  (forjadosdias.com.br, aprovadonaoab.com.br)
+                            ──► amanuense:80     (felipe.forjadosdias.tech)
 
 Monitoring (interno):
   promtail → loki → grafana:3001
@@ -35,6 +36,9 @@ vps-infra/
 ├── estudeoab/          # infra do EstudeOAB (Node + React)
 │   ├── docker-compose.yml
 │   ├── nginx/nginx.conf
+│   └── .env.example
+├── amanuense/          # infra do Amanuense (Python + D3.js)
+│   ├── docker-compose.yml
 │   └── .env.example
 └── monitoring/         # Grafana + Loki + Promtail
     ├── docker-compose.yml
@@ -77,7 +81,15 @@ cp .env.example .env   # preencher as variáveis reais
 docker compose up -d --build
 ```
 
-### 5. Subir o Monitoring
+### 5. Subir o Amanuense
+O código-fonte fica em `/home/victor/Projetos/Publicado/Amanuense/`.
+```bash
+cd /home/victor/Projetos/Publicado/Amanuense/
+cp .env.example .env   # preencher DEEPSEEK_API_KEY
+docker compose up -d --build
+```
+
+### 6. Subir o Monitoring
 Os arquivos ficam em `/home/bugbrain/monitoring/` (pasta original na VPS).
 ```bash
 cd /home/bugbrain/monitoring/
@@ -91,7 +103,7 @@ docker compose up -d
 - **Imagem:** nginx:1.27-alpine
 - **Porta pública:** 80
 - **Função:** roteamento de domínios para os containers de cada projeto via upstream dinâmico (resolve nomes Docker em runtime)
-- **Domínios gerenciados:** tamois.com.br, forjadosdias.com.br, aprovadonaoab.com.br
+- **Domínios gerenciados:** tamois.com.br, forjadosdias.com.br, aprovadonaoab.com.br, felipe.forjadosdias.tech
 
 ### tamois
 - **Stack:** Ruby on Rails (Dockerfile no repo da aplicação)
@@ -108,6 +120,14 @@ docker compose up -d
 - **Repo da app:** https://github.com/ForjaDosDias/EstudeOAB
 - **Variáveis obrigatórias:** `JWT_SECRET`, `DEEPSEEK_API_KEY`, `RESEND_API_KEY`
 - **Volume persistente:** `postgres_data`
+
+### amanuense
+- **Stack:** Python 3.11 + D3.js (multi-stage Docker: `web` + `api`)
+- **Containers:** `amanuense` (frontend/nginx:80) + `amanuense-api` (FastAPI:8000)
+- **Domínio:** felipe.forjadosdias.tech
+- **Repo da app:** https://github.com/ForjaDosDias/Amanuense2 (branch canônico: `claude/implementation-plan-challenges-XpawN` — não há `main` no remoto; `main` local rastreia esse branch)
+- **Variáveis obrigatórias:** `DEEPSEEK_API_KEY`
+- **Volumes:** `corpus/`, `output/`, `intermediate/`, `data/` (bind mounts do repo)
 
 ### monitoring
 - **Stack:** Grafana + Loki + Promtail
