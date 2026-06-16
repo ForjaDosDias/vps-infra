@@ -1,0 +1,21 @@
+services:
+  naoesqueci:
+    build:
+      context: /home/victor/Projetos/Publicado/NaoEsqueci
+    container_name: naoesqueci
+    restart: always
+    environment:
+      - PORT=3001
+    expose:
+      - "3001"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - vps-proxy
+
+networks:
+  vps-proxy:
+    external: true

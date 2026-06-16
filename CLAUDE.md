@@ -12,6 +12,7 @@ Todos os projetos rodam em containers Docker. Existem duas redes externas:
 Internet → proxy (nginx:80) ──► tamois:80       (tamois.com.br)
                             ──► estude-nginx:80  (forjadosdias.com.br, aprovadonaoab.com.br)
                             ──► amanuense:80     (felipe.forjadosdias.tech)
+                            ──► naoesqueci:3001  (naoesqueci.forjadosdias.tech)
 
 Monitoring (interno):
   promtail → loki → grafana:3001
@@ -38,6 +39,9 @@ vps-infra/
 │   ├── nginx/nginx.conf
 │   └── .env.example
 ├── amanuense/          # infra do Amanuense (Python + D3.js)
+│   ├── docker-compose.yml
+│   └── .env.example
+├── naoesqueci/         # infra do Não Esqueci (Vite + React + Node)
 │   ├── docker-compose.yml
 │   └── .env.example
 └── monitoring/         # Grafana + Loki + Promtail
@@ -89,7 +93,15 @@ cp .env.example .env   # preencher DEEPSEEK_API_KEY
 docker compose up -d --build
 ```
 
-### 6. Subir o Monitoring
+### 6. Subir o Não Esqueci
+O código-fonte fica em `/home/victor/Projetos/Publicado/NaoEsqueci/` (clone de `ForjaDosDias/NaoEsqueci2`).
+O Dockerfile faz build do front (Vite) + roda os testes e empacota o servidor Node.
+```bash
+cd /home/victor/Projetos/vps-infra/naoesqueci/
+docker compose up -d --build
+```
+
+### 7. Subir o Monitoring
 Os arquivos ficam em `/home/bugbrain/monitoring/` (pasta original na VPS).
 ```bash
 cd /home/bugbrain/monitoring/
@@ -103,7 +115,7 @@ docker compose up -d
 - **Imagem:** nginx:1.27-alpine
 - **Porta pública:** 80
 - **Função:** roteamento de domínios para os containers de cada projeto via upstream dinâmico (resolve nomes Docker em runtime)
-- **Domínios gerenciados:** tamois.com.br, forjadosdias.com.br, aprovadonaoab.com.br, felipe.forjadosdias.tech
+- **Domínios gerenciados:** tamois.com.br, forjadosdias.com.br, aprovadonaoab.com.br, felipe.forjadosdias.tech, naoesqueci.forjadosdias.tech
 
 ### tamois
 - **Stack:** Ruby on Rails (Dockerfile no repo da aplicação)
@@ -128,6 +140,14 @@ docker compose up -d
 - **Repo da app:** https://github.com/ForjaDosDias/Amanuense2 (branch canônico: `claude/implementation-plan-challenges-XpawN` — não há `main` no remoto; `main` local rastreia esse branch)
 - **Variáveis obrigatórias:** `DEEPSEEK_API_KEY`
 - **Volumes:** `corpus/`, `output/`, `intermediate/`, `data/` (bind mounts do repo)
+
+### naoesqueci
+- **Stack:** Vite + React (front) + servidor Node leve (`server/index.js`) num único container
+- **Container:** `naoesqueci` (Node serve `dist/` estático + `/api/nfce` + `/api/health` na porta 3001)
+- **Domínio:** naoesqueci.forjadosdias.tech
+- **Repo da app:** https://github.com/ForjaDosDias/NaoEsqueci2
+- **Variáveis:** nenhuma obrigatória (`PORT=3001` opcional; consulta NFC-e usa portais públicos da SEFAZ)
+- **Sem volume persistente** — estado do usuário fica no `localStorage` do navegador
 
 ### monitoring
 - **Stack:** Grafana + Loki + Promtail
