@@ -158,6 +158,53 @@ docker compose up -d
 - **Volumes persistentes:** `loki-storage`, `grafana-storage`
 - **Promtail coleta:** logs de todos os containers Docker + syslog + auth.log
 
+## Esteira CI/CD (GitHub Actions)
+
+Deploy automatizado por repositório. Modelo de branches com gates crescentes:
+
+- `feature/*` → sem regra. Para entrar na `dev`: PR + check `test` verde (auto-merge, **sem** aprovação humana).
+- `dev` → única branch que pode abrir PR para `main` (garantido pelo check `guard`).
+- `main` → PR só a partir de `dev` + check `test` verde + **1 aprovação humana**. Merge dispara deploy.
+
+### Workflows (em `<repo>/.github/workflows/`)
+- `ci.yml` — `test` em PRs/push de `dev`/`main`, roda no **GitHub-hosted** (ubuntu-latest).
+- `guard-main-source.yml` — check `guard`; falha se o PR para `main` não vier de `dev`.
+- `deploy.yml` — roda no **self-hosted runner** em push na `main`: `git reset --hard` no HEAD da main
+  no diretório do código + `docker compose up -d --build --wait` no diretório do compose.
+  Como faz fetch do HEAD atual da main, qualquer execução sobe sempre o estado mais recente (idempotente).
+
+Templates e JSON de rulesets versionados em `vps-infra/ci/templates/` e `vps-infra/ci/rulesets/`.
+
+### Self-hosted runner
+- Instalação: `/home/victor/actions-runner/` (binário oficial actions/runner).
+- Roda como **serviço systemd, usuário root** (`RUNNER_ALLOW_RUNASROOT=1`) — todos os repos/infra são root:root.
+- Labels: `self-hosted, vps-prod` (o `runs-on` do deploy exige ambos).
+- **Importante:** registrado **por repositório** (repo-level), NÃO org-level. O registro org-level na
+  ForjaDosDias ficou com os jobs presos em `queued` (o Broker do GitHub não roteava os jobs ao runner,
+  mesmo com grupo `Default` aberto e labels corretos). Repo-level funcionou de imediato. Cada repo da
+  esteira tem seu próprio registro do mesmo runner/host.
+- Recuperar/registrar runner para um repo:
+  ```bash
+  cd /home/victor/actions-runner
+  export RUNNER_ALLOW_RUNASROOT=1
+  # token: gh api -X POST /repos/<org>/<repo>/actions/runners/registration-token --jq .token
+  ./config.sh --unattended --replace --url https://github.com/<org>/<repo> \
+    --token <REG_TOKEN> --name vps-prod-runner --labels vps-prod --work _work
+  ./svc.sh install root && ./svc.sh start
+  ```
+- Status: `cd /home/victor/actions-runner && ./svc.sh status` ou `gh api /repos/<org>/<repo>/actions/runners`.
+
+### Aplicar rulesets a um repo novo
+```bash
+gh api -X POST /repos/<org>/<repo>/rulesets --input vps-infra/ci/rulesets/main.json
+gh api -X POST /repos/<org>/<repo>/rulesets --input vps-infra/ci/rulesets/dev.json
+gh api -X PATCH /repos/<org>/<repo> -F allow_auto_merge=true -F delete_branch_on_merge=true
+```
+
+### Estado atual
+- **NaoEsqueci2** — piloto, esteira completa e validada (deploy automático funcionando).
+- EstudeOAB, Amanuense, Tamois — pendentes de replicação (Tamois usa `kamal deploy` no lugar do compose).
+
 ## Comandos Úteis
 
 ```bash
