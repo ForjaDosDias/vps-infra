@@ -29,6 +29,8 @@ jobs:
     steps:
       - name: Atualizar código de produção
         run: |
+          # safe.directory: o runner roda como root e alguns repos têm .git de outro dono (ex.: victor)
+          git config --global --add safe.directory "$SRC_DIR"
           cd "$SRC_DIR"
           git fetch "https://x-access-token:${{ github.token }}@github.com/${REPO}.git" main
           git reset --hard FETCH_HEAD
